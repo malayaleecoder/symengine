@@ -87,6 +87,11 @@ using SymEngine::eval_double;
 using SymEngine::is_a;
 using SymEngine::neg;
 using SymEngine::pi;
+using SymEngine::max;
+using SymEngine::min;
+using SymEngine::Max;
+using SymEngine::Min;
+using SymEngine::Rational;
 
 #ifdef HAVE_SYMENGINE_MPFR
 using SymEngine::real_mpfr;
@@ -173,6 +178,10 @@ TEST_CASE("Sin: functions", "[functions]")
     // sin(asin(x)) = x
     r1 = sin(asin(x));
     REQUIRE(eq(*r1, *x));
+
+    // sin(acsc(x)) = 1/x
+    r1 = sin(acsc(x));
+    REQUIRE(eq(*r1, *div(one, x)));
 
     // sin(pi + y) = -sin(y)
     r1 = sin(add(pi, y));
@@ -270,6 +279,10 @@ TEST_CASE("Cos: functions", "[functions]")
     // cos(acos(x)) = x
     r1 = cos(acos(x));
     REQUIRE(eq(*r1, *x));
+
+    // cos(asec(x)) = 1/x
+    r1 = cos(asec(x));
+    REQUIRE(eq(*r1, *div(one, x)));
 
     // cos(pi - y) = -cos(y)
     r1 = cos(sub(pi, y));
@@ -380,6 +393,10 @@ TEST_CASE("Tan: functions", "[functions]")
     r1 = tan(atan(x));
     REQUIRE(eq(*r1, *x));
 
+    // tan(acot(x)) = 1/x
+    r1 = tan(acot(x));
+    REQUIRE(eq(*r1, *div(one, x)));
+
     // tan(pi + y) = -tan(y)
     r1 = tan(add(pi, y));
     r2 = tan(y);
@@ -474,6 +491,10 @@ TEST_CASE("Cot: functions", "[functions]")
     // cot(acot(x)) = x
     r1 = cot(acot(x));
     REQUIRE(eq(*r1, *x));
+
+    // cot(atan(x)) = 1/x
+    r1 = cot(atan(x));
+    REQUIRE(eq(*r1, *div(one, x)));
 
     // cot(pi + y) = -cot(y)
     r1 = cot(add(pi, y));
@@ -571,6 +592,10 @@ TEST_CASE("Csc: functions", "[functions]")
     r1 = csc(acsc(x));
     REQUIRE(eq(*r1, *x));
 
+    // csc(asin(x)) = 1/x
+    r1 = csc(asin(x));
+    REQUIRE(eq(*r1, *div(one, x)));
+
     // csc(pi + y) = -csc(y)
     r1 = csc(add(pi, y));
     r2 = mul(im1, csc(y));
@@ -666,6 +691,10 @@ TEST_CASE("Sec: functions", "[functions]")
     r1 = sec(asec(x));
     REQUIRE(eq(*r1, *x));
 
+    // sec(acos(x)) = 1/x
+    r1 = sec(acos(x));
+    REQUIRE(eq(*r1, *div(one, x)));
+
     // sec(pi + y) = -sec(y)
     r1 = sec(add(pi, y));
     r2 = mul(im1, sec(y));
@@ -705,6 +734,54 @@ TEST_CASE("Sec: functions", "[functions]")
     r1 = sec(add(sub(mul(i12, pi), y), div(pi, i2)));
     r2 = csc(y);
     REQUIRE(eq(*r1, *r2));
+}
+
+TEST_CASE("TrigFunction: trig_to_sqrt", "[functions]")
+{
+    RCP<const Basic> r1;
+    RCP<const Symbol> x = symbol("x");
+    RCP<const Basic> i2 = integer(2);
+    RCP<const Basic> im2 = integer(-2);
+    RCP<const Basic> one_m_x2 = sub(one, pow(x, i2));
+    RCP<const Basic> one_m_xm2 = sub(one, pow(x, im2));
+    RCP<const Basic> one_p_x2 = add(one, pow(x, i2));
+    RCP<const Basic> one_p_xm2 = add(one, pow(x, im2));
+
+    r1 = sin(acos(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *sqrt(one_m_x2)));
+
+    r1 = sin(atan(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(x, sqrt(one_p_x2))));
+
+    r1 = cos(acsc(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *sqrt(one_m_xm2)));
+
+    r1 = cos(acot(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(one, sqrt(one_p_xm2))));
+
+    r1 = tan(acos(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(sqrt(one_m_x2), x)));
+
+    r1 = tan(asec(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *mul(x, sqrt(one_m_xm2))));
+
+    r1 = csc(atan(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(sqrt(one_p_x2), x)));
+
+    r1 = csc(asec(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(one, sqrt(one_m_xm2))));
+
+    r1 = sec(acos(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(one, x)));
+
+    r1 = sec(acot(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *sqrt(one_p_xm2)));
+
+    r1 = cot(asin(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(sqrt(one_m_x2), x)));
+
+    r1 = cot(acos(x));
+    REQUIRE(eq(*trig_to_sqrt(r1), *div(x, sqrt(one_m_x2))));
 }
 
 TEST_CASE("function_symbol: functions", "[functions]")
@@ -2058,4 +2135,70 @@ TEST_CASE("MPFR and MPC: functions", "[functions]")
     CHECK_THROWS_AS(asin(real_mpfr(a)), std::runtime_error);
 #endif //HAVE_SYMENGINE_MPC
 #endif //HAVE_SYMENGINE_MPFR
+}
+
+TEST_CASE("max: functions", "[functions]")
+{
+    RCP<const Symbol> x = symbol("x");
+    RCP<const Symbol> y = symbol("y");
+    RCP<const Basic> r2_5 = Rational::from_two_ints(*integer(2), *integer(5));
+    RCP<const Basic> rd = real_double(0.32);
+    RCP<const Basic> i2 = integer(2);
+
+    RCP<const Basic> res;
+
+    res = max({x, y});
+    REQUIRE(eq(*res, *max({y, x})));        // max(x, y) == max(y, x)
+    REQUIRE(is_a<Max>(*res));               // max(x, y) is a Max
+
+    res = max({x});
+    REQUIRE(eq(*res, *x));                 // max(x) == x
+
+    res = max({i2, rd, r2_5});
+    REQUIRE(eq(*res, *i2));                 // max(2, 2/5, 0.32) == 2
+
+    res = max({x, max({i2, y})});
+    REQUIRE(eq(*res, *max({x, i2, y})));    // max(x, max(2, y)) == max(x, 2, y)
+
+    res = max({max({x, max({y, i2})}), max({r2_5, rd})});
+    REQUIRE(eq(*res, *max({x, i2, y})));    // max(max(x, max(y, 2)), max(2/5, 0.32)) == max(x, 2, y)
+
+    res = max({i2, r2_5, x});
+    REQUIRE(eq(*res, *max({i2, x})));       // max(2, 2/5, x) == max(2, x)
+
+    res = max({max({x, i2}), max({y, r2_5})});
+    REQUIRE(eq(*res, *max({x, i2, y})));    // max(max(2, x), max(2/5, y)) == max(x, 2, y)
+}
+
+TEST_CASE("min: functions", "[functions]")
+{
+    RCP<const Symbol> x = symbol("x");
+    RCP<const Symbol> y = symbol("y");
+    RCP<const Basic> r2_5 = Rational::from_two_ints(*integer(2), *integer(5));
+    RCP<const Basic> rd = real_double(0.32);
+    RCP<const Basic> i2 = integer(2);
+
+    RCP<const Basic> res;
+
+    res = min({x, y});
+    REQUIRE(eq(*res, *min({y, x})));        // min(x, y) == min(y, x)
+    REQUIRE(is_a<Min>(*res));               // min(x, y) is a min
+
+    res = min({x});
+    REQUIRE(eq(*res, *x));                 // min(x) == x
+
+    res = min({i2, rd, r2_5});
+    REQUIRE(eq(*res, *rd));                 // min(2, 2/5, 0.32) == 0.32
+
+    res = min({i2, rd, max({x})});
+    REQUIRE(eq(*res, *min({rd, x})));       // min(2, 0.32, max(x)) == min(0.32, x)
+
+    res = min({x, min({i2, y})});
+    REQUIRE(eq(*res, *min({x, i2, y})));    // min(x, min(2, y)) == min(x, 2, y)
+
+    res = min({min({x, min({y, i2})}), min({r2_5, rd})});
+    REQUIRE(eq(*res, *min({x, rd, y})));    // min(min(x, min(y, 2)), min(2/5, 0.32)) == min(x, 0.32, y)
+
+    res = min({min({x, i2}), min({y, r2_5})});
+    REQUIRE(eq(*res, *min({x, r2_5, y})));    // min(min(2, x), min(2/5, y)) == min(x, 2/5, y)
 }
